@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 import os
+from gemini import GeminiAssistant
+from gemini_tool import get_filter_meta_data, separate_query
 
 # from langchain_pinecone import PineconeVectorStore
 # from openai import OpenAI
@@ -20,9 +22,6 @@ load_dotenv()
 
 # Enable CORS for all routes
 CORS(app, origins="*")
-
-
-
 
 @app.route('/')
 def home():
@@ -48,27 +47,42 @@ def get_huggingface_embeddings(text, model_name="sentence-transformers/all-mpnet
 
 @app.route('/get_products', methods=['GET'])
 def get_products():
+    client = Groq(
+        api_key=os.getenv("GROQ_API_KEY"),
+    )
     # Get query parameter from the request
-    query = request.args.get('query', default="What are some companies that manufacture consumer hardware?", type=str)
+    q = request.args.get('query', default="What are some companies that manufacture consumer hardware?", type=str)
     index_name = "stocks"
-    namespace = "default"  # Adjust the namespace as necessary
-
+    namespace = "stock-descriptions"  # Adjust the namespace as necessary
+    
+    s = separate_query(q)
+    print(s)
+    query = s['query']
+    criteria = s['criteria']
+    print("improved_query", query)
     # Connect to your Pinecone index
     pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
     pinecone_index = pc.Index(index_name)
     
     # Get embeddings for the query
     raw_query_embedding = get_huggingface_embeddings(query)
+    filter_meta_data = {}
+    
+    try:
+        filter_meta_data = get_filter_meta_data(query)
+    except Exception as e:
+        print(f"Failed to get the filter meta data ${e}")
+    print("fitler_meta_data", filter_meta_data)
     # Query Pinecone for top 10 matches
-    top_matches = pinecone_index.query(vector=raw_query_embedding.tolist(), top_k=10, include_metadata=True, namespace=namespace)
+    top_matches = pinecone_index.query(vector=raw_query_embedding.tolist(), top_k=10, include_metadata=True, namespace=namespace, filter=filter_meta_data)
+    
     contexts = [item['metadata']['text'] for item in top_matches['matches']]
+    metadata_list = [item['metadata'] for item in top_matches['matches']]
     augmented_query = "<CONTEXT>\n" + "\n\n-------\n\n".join(contexts[:10]) + "\n-------\n</CONTEXT>\n\n\n\nMY QUESTION:\n" + query
     print(augmented_query)
 
     # OpenAI client setup
-    client = Groq(
-        api_key=os.getenv("GROQ_API_KEY"),
-    )
+ 
 
     system_prompt = """You are an expert at providing answers about stocks. Please answer my question provided."""
 
@@ -83,7 +97,9 @@ def get_products():
     response = chat_completion.choices[0].message.content
     print(response)
     # print("returned this")
-    return jsonify({"response": response}), 200
+    print("tickers", metadata_list)
+    # print(top_matches)
+    return jsonify({"response": response, "tickers": metadata_list}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
