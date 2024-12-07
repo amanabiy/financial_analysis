@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, ChangeEvent, KeyboardEvent } from 'react';
-// import ReactMarkdown from 'react-markdown';
 import { RenderMessage } from './Markdown'
 
 interface Response {
@@ -11,109 +10,30 @@ interface Response {
 const InputResponse: React.FC = () => {
   const [response, setResponse] = useState<Response | null>(null);
   const [input, setInput] = useState<string>('');
-  const response_sample = `
-# Markdown Examples
-
-## 1. Headers
-# This is a Heading 1
-## This is a Heading 2
-### This is a Heading 3
-#### This is a Heading 4
-##### This is a Heading 5
-###### This is a Heading 6
-
-## 2. Emphasis
-*This text is italic*  
-_This text is also italic_
-
-**This text is bold**  
-__This text is also bold__
-
-**You can combine _bold_ and _italic_**
-
-## 3. Lists
-### Unordered List
-- Item 1
-- Item 2
-  - Sub-item 1
-  - Sub-item 2
-
-### Ordered List
-1. First item
-2. Second item
-   1. Sub-item 1
-   2. Sub-item 2
-
-## 4. Links
-[This is a link](http://example.com)
-
-[This is a reference-style link][1]
-
-[1]: http://example.com
-
-## 5. Images
-![This is an image](https://www.thoughtco.com/thmb/yeuX1zVKy65C2tAhGSwGeiwmIMk=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/close-up-of-flame-536940503-59b2b3de845b3400107a7f27-5b967c9546e0fb00254ed63b.jpg)
-
-![Alt text][image]
-
-[image]: https://reactormag.com/wp-content/uploads/2024/01/avatar-the-last-airbender-flying.jpg
-
-## 6. Blockquotes
-> This is a blockquote.
-> 
-> - You can include lists within blockquotes.
-> - Like this.
-
-## 7. Code
-### Inline Code
-Use the \`print()\` function to display output.
-
-### Code Block
-\`\`\`python
-def hello_world():
-    print("Hello, World!")
-\`\`\`
-
-## 8. Horizontal Rule
----
-
-## 9. Tables
-| Header 1 | Header 2 | Header 3 |
-|----------|----------|----------|
-| Row 1, Col 1 | Row 1, Col 2 | Row 1, Col 3 |
-| Row 2, Col 1 | Row 2, Col 2 | Row 2, Col 3 |
-
-## 10. Strikethrough
-This is ~~strikethrough~~ text.
-
-## 11. Task Lists
-- [x] Task 1
-- [ ] Task 2
-- [ ] Task 3
-
-## 12. Footnotes
-This is a sentence with a footnote[^1].
-
-[^1]: This is the footnote.
-
-## 13. Definition Lists
-Term 1
-: Definition 1
-
-Term 2
-: Definition 2
-
-## 14. HTML Elements
-You can also use HTML tags like <b>bold</b> and <i>italic</i> in markdown.
-
-## 15. Emoji
-Here is a smiley face: :smile:`
 
   const sendRequest = async () => {
     if (input.trim()) {
-      // Simulate a server response for the example
-      const serverResponse: Response = { markdown: `${response_sample}` };
-      setResponse(serverResponse);
+      try {
+        // Making the fetch request
+        const query = encodeURIComponent(input);
+        const res = await fetch(`http://127.0.0.1:5000/get_products?query=${query}`, {
+          method: 'GET',
+          // mode: 'no-cors',
+        });
+        console.log(res)
+        if (!res.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        console.log(res.ok)
+        const data = await res.json();
+        console.log("response data", data)
+        // Assuming the response contains a markdown string
+        const serverResponse: Response = { markdown: data.response };
+        setResponse(serverResponse);
+      } catch (error) {
+        console.error('Error:', error);
+        // Handle error here (e.g., set an error message)
+      }
       setInput('');
     }
   };
@@ -129,7 +49,7 @@ Here is a smiley face: :smile:`
   };
 
   return (
-    <div className="flex flex-col h-full w-full justify-center items-center bg-black text-white">
+    <div className={`flex flex-col h-full w-full items-center bg-black text-white ${!response ? 'justify-center' : ''}`}>
       <h2 className="text-2xl font-semibold mb-4">Find Your Next Investment</h2>
       <p className="text-sm mb-4 text-gray-400">
         Discover stocks with natural language queries, e.g.,
@@ -157,7 +77,7 @@ Here is a smiley face: :smile:`
           </button>
         </div>
       </div>
-      <div className="w-full overflow-y-auto mt-4">
+      <div className="w-full mt-4">
         {response && (
           <div className="p-6 border rounded-lg bg-gray-800 shadow-md">
             <RenderMessage>{response.markdown}</RenderMessage>
