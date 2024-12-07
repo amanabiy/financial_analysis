@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 import os
 
 # from langchain_pinecone import PineconeVectorStore
-from openai import OpenAI
+# from openai import OpenAI
 # import yfinance as yf
 # from langchain_community.embeddings import HuggingFaceEmbeddings
 from sentence_transformers import SentenceTransformer
@@ -11,11 +11,17 @@ from pinecone import Pinecone
 # import requests
 import os
 from dotenv import load_dotenv
+from flask_cors import CORS
+from groq import Groq
 
-load_dotenv()
 
 app = Flask(__name__)
-from groq import Groq
+load_dotenv()
+
+# Enable CORS for all routes
+CORS(app, origins="*")
+
+
 
 
 @app.route('/')
@@ -76,8 +82,8 @@ def get_products():
     )
     response = chat_completion.choices[0].message.content
     print(response)
-
-    return jsonify({"response": response})
+    # print("returned this")
+    return jsonify({"response": response}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
