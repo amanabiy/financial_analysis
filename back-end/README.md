@@ -33,7 +33,7 @@
    ```env
    PINECONE_API_KEY=
    GROQ_API_KEY=
-   
+   GEMINI_API_KEY=
    ```
 
 6. Run the Flask application:

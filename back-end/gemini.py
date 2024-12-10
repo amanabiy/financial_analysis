@@ -1,12 +1,14 @@
+from typing import Iterable
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
 import os
 from dotenv import load_dotenv
+from google.generativeai.types import content_types
 
 load_dotenv()
 
 class GeminiAssistant:
-    def __init__(self, model_name, system_instruction=None, tools=[], functions={}, starting_history=None):
+    def __init__(self, model_name, system_instruction=None, tools=[], functions={}, starting_history=None, mode="ANY"):
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         self.api_key = GEMINI_API_KEY
         if not self.api_key:
@@ -17,21 +19,31 @@ class GeminiAssistant:
        
         self.model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=system_instruction, tools=tools)
         self.functions = functions
+        self.tools = tuple(functions.keys())
         self.chat = None
         self.history = starting_history if starting_history else []
 
+    def tool_config_from_mode(self, mode: str="any", fns: Iterable[str] = ()):
+        """Create a tool config with the specified function calling mode."""
+        return content_types.to_tool_config(
+            {"function_calling_config": {"mode": mode, "allowed_function_names": fns}}
+        )
+
     def start_chat(self):
         """Start a chat session with the model."""
-        self.chat = self.model.start_chat(enable_automatic_function_calling=False)
+        self.chat = self.model.start_chat()
 
     def send_message(self, message):
         """Send a message to the model and handle function calls."""
         context = " ".join([f"User: {entry['message']} Assistant: {entry['response']}" for entry in self.history])
         full_message = f"{context} User: {message}" if context else message
         try:
-            response = self.chat.send_message(full_message)
+            print("message", message)
+            tool_config = self.tool_config_from_mode("any", self.tools)
+            response = self.chat.send_message(full_message, 
+                                            #   tool_config=tool_config
+                                              )
             function_calls = []
-
             for part in response.parts:
                 if fn := part.function_call:
                     function_calls.append(fn)

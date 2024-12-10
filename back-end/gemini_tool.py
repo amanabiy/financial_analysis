@@ -23,11 +23,9 @@ load_dotenv()
 
 def get_filter_meta_data(query):
     system_instruction = (
-        "You are an assistant designed to help filter based on given parameters. "
-        "Your task is to execute the provided function exactly according to its details. "
-        "Do not ask questions, simply execute the function as described."
+        "You are an assistant designed to help filter tickers based on given parameters. "
+        "You have a function called build_metadata_filter and you will need to get the inputs for this function"
         "Don't ask for more informations, you can just call the function with empty parameter if you are not sure"
-        "If A parameter of a function is optional don't ask more information about it"
     )
     assistant = GeminiAssistant(model_name="gemini-1.0",
             system_instruction=system_instruction,
@@ -41,7 +39,7 @@ def get_filter_meta_data(query):
 
     # Start the chat
     assistant.start_chat()
-
+    print("the data to query", query)
     # Example of sending a message to Gemini
     response = assistant.send_message(query)
     print(response)
@@ -49,18 +47,14 @@ def get_filter_meta_data(query):
 
 
 
-def separate_query_and_filter_criteria(query: str, criteria: str):
+def generate_possible_desc_and_filter_criteria(possible_description_company: str, criteria: str):
     """
-    Separates the search query from the filtering criteria provided.
-
-    This function extracts the main query from the string and prepares the filter criteria
-    for use in a search or database query. The query and criteria should be provided as 
-    inputs, where the query is the main question or search term, and the criteria is a 
-    dictionary containing key-value pairs representing the filtering conditions.
+    Generates a possible description of the company the user is looking for like it would be in the
+    Yahoo finance business summary, and also a criteria string from the prompt 
 
     Args:
-        query (str): The main query should be a description of possible company (the user looking for) or question to search for mainly description about a company.
-        criteria (str): a string description for the critera filtered from the query mainly on country and sector
+        possible_description_company (str): This should be a possible description of the company they are looking. It can't be empty
+        criteria (str): a string description for the critera filtered from the query mainly on country and sector 
 
     Returns:
         tuple: A tuple containing two elements:
@@ -68,7 +62,7 @@ def separate_query_and_filter_criteria(query: str, criteria: str):
             - The second element is the dictionary of filter criteria (dict).
             
     Example:
-        query = "What are some tech companies?"
+        query = "A technology company that works in smartphone, datacenters and more."
         criteria = {'sector': 'Technology', 'marketCap_gt': 10000000000}
         result = separate_query_and_filter_criteria(query, criteria)
         # result will be ("What are some tech companies?", {'sector': 'Technology', 'marketCap_gt': 10000000000})
@@ -91,10 +85,10 @@ def separate_query(query):
     assistant = GeminiAssistant(model_name="gemini-1.0",
             system_instruction=system_instruction,
             tools=[
-                separate_query_and_filter_criteria
+                generate_possible_desc_and_filter_criteria
             ],
             functions= {
-                'separate_query_and_filter_criteria': separate_query_and_filter_criteria
+                'generate_possible_desc_and_filter_criteria': generate_possible_desc_and_filter_criteria
             }
         )
 
@@ -104,7 +98,7 @@ def separate_query(query):
     # Example of sending a message to Gemini
     response = assistant.send_message(query)
     print(response)
-    return response['separate_query_and_filter_criteria']['args']
+    return response['generate_possible_desc_and_filter_criteria']['args']
 
 
     

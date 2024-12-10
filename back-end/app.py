@@ -51,13 +51,15 @@ def get_products():
         api_key=os.getenv("GROQ_API_KEY"),
     )
     # Get query parameter from the request
-    q = request.args.get('query', default="What are some companies that manufacture consumer hardware?", type=str)
-    index_name = "stocks"
-    namespace = "stock-descriptions"  # Adjust the namespace as necessary
+    query = request.args.get('query', default="What are some companies that manufacture consumer hardware?", type=str)
+    if not query:
+        return jsonify({"response": "What can I help you with? You can ask questions on finding tickers to fund in."})
+    index_name = "stocks-with-metadata"
+    namespace = "stock-descriptions_metadata"  # Adjust the namespace as necessary
     
-    s = separate_query(q)
+    s = separate_query(query)
     print(s)
-    query = s['query']
+    possible_description = s['possible_description_company']
     criteria = s['criteria']
     print("improved_query", query)
     # Connect to your Pinecone index
@@ -65,11 +67,11 @@ def get_products():
     pinecone_index = pc.Index(index_name)
     
     # Get embeddings for the query
-    raw_query_embedding = get_huggingface_embeddings(query)
+    raw_query_embedding = get_huggingface_embeddings(possible_description)
     filter_meta_data = {}
     
     try:
-        filter_meta_data = get_filter_meta_data(query)
+        filter_meta_data = get_filter_meta_data(criteria)
     except Exception as e:
         print(f"Failed to get the filter meta data ${e}")
     print("fitler_meta_data", filter_meta_data)
