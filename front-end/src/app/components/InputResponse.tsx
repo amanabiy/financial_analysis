@@ -1,38 +1,59 @@
 'use client';
 
 import React, { useState, ChangeEvent, KeyboardEvent } from 'react';
-import { RenderMessage } from './Markdown'
+import { RenderMessage } from './Markdown';
+import { useCompanies, Company } from '../context/CompanyContext';
 
 interface Response {
   markdown: string;
+  tickers: string[]; // Assuming tickers is an array of company tickers
 }
 
 const InputResponse: React.FC = () => {
   const [response, setResponse] = useState<Response | null>(null);
+  const { companies, setCompanies } = useCompanies();
   const [input, setInput] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false); // New loading state
 
   const sendRequest = async () => {
     if (input.trim()) {
+      setLoading(true); // Start loading
       try {
         // Making the fetch request
         const query = encodeURIComponent(input);
         const res = await fetch(`http://127.0.0.1:5000/get_products?query=${query}`, {
           method: 'GET',
-          // mode: 'no-cors',
         });
-        console.log(res)
+
         if (!res.ok) {
           throw new Error('Failed to fetch data');
         }
-        console.log(res.ok)
+
         const data = await res.json();
-        console.log("response data", data)
-        // Assuming the response contains a markdown string
-        const serverResponse: Response = { markdown: data.response };
+        console.log("response data", data);
+
+        // Assuming the response contains markdown and tickers
+        const serverResponse: Response = { markdown: data.response, tickers: data.tickers };
         setResponse(serverResponse);
+
+        // Set companies using the tickers from the response
+        const seenTickers = new Set<string>();
+        const uniqueTickers: Company[] = [];
+
+        data.tickers.forEach((ticker: any) => {
+          if (!seenTickers.has(ticker['Ticker'])) {
+            seenTickers.add(ticker['Ticker']);  // Add to the Set
+            uniqueTickers.push(ticker);  // Add to the unique list
+          }
+        });
+
+        setCompanies(uniqueTickers)
+
       } catch (error) {
         console.error('Error:', error);
         // Handle error here (e.g., set an error message)
+      } finally {
+        setLoading(false); // Stop loading after request
       }
       setInput('');
     }
@@ -69,11 +90,11 @@ const InputResponse: React.FC = () => {
           />
           <button
             onClick={sendRequest}
-            disabled={!input.trim()}
-            className={`absolute right-0 top-0 bottom-0 px-6 py-4 bg-blue-600 text-white rounded-r-lg shadow-md transition duration-300 ease-in-out ${!input.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+            disabled={!input.trim() || loading} // Disable button while loading
+            className={`absolute right-0 top-0 bottom-0 px-6 py-4 bg-blue-600 text-white rounded-r-lg shadow-md transition duration-300 ease-in-out ${(!input.trim() || loading) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
               }`}
           >
-            Send
+            {loading ? 'Loading...' : 'Send'} {/* Show loading text on button */}
           </button>
         </div>
       </div>
